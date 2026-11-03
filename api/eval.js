@@ -58,10 +58,39 @@ serious 유형이면 trap은 true, ex는 [["공감","공감 답"]] 하나.`;
   return null;
 }
 
-module.exports = async (req, res) => {
-  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+async function callGemini(key, model, prompt, temperature) {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json", temperature },
+      }),
+    }
+  );
+}
 
-  const key = process.env.GEMINI_API_KEY;
+module.exports = async (req, res) => {
+  const key = (process.env.GEMINI_API_KEY || "").trim();
+  const model = (process.env.GEMINI_MODEL || "gemini-flash-latest").trim();
+
+  // 브라우저로 /api/eval 을 열면 상태 점검 결과를 보여준다 (키 값은 절대 안 보여줌)
+  if (req.method === "GET") {
+    const out = { 키_설정됨: !!key, 키_앞글자: key ? key.slice(0, 4) + "…" : null, 모델: model };
+    if (key) {
+      try {
+        const r = await callGemini(key, model, '{"ok":true} 라고만 JSON으로 답해', 0);
+        out.구글_응답코드 = r.status;
+        if (!r.ok) out.구글_에러 = (await r.text()).slice(0, 400);
+        else out.결과 = "정상 작동";
+      } catch (e) { out.연결_에러 = String(e).slice(0, 200); }
+    }
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    return res.status(200).send(JSON.stringify(out, null, 2));
+  }
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   if (!key) return res.status(500).json({ error: "GEMINI_API_KEY가 설정되지 않음" });
 
   const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "anon";
@@ -74,22 +103,8 @@ module.exports = async (req, res) => {
   const prompt = buildPrompt(body || {});
   if (!prompt) return res.status(400).json({ error: "bad kind" });
 
-  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
   try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: body.kind === "new" ? 1.0 : 0.4,
-          },
-        }),
-      }
-    );
+    const r = await callGemini(key, model, prompt, body.kind === "new" ? 1.0 : 0.4);
     if (r.status === 429) return res.status(429).json({ error: "quota" });
     if (!r.ok) {
       const t = await r.text();
