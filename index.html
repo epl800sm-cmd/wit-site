@@ -1,0 +1,448 @@
+<title>위트 레일 훈련소</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 한 장의 신호 카드 위로 전제(레일) → 틀기 → 목적지 순서로 내려가는 단일 컬럼 */
+:root{
+  --bg:#eef0ec; --surface:#fbfcfa; --ink:#1d2320; --muted:#5e6862; --line:#cfd6d0;
+  --signal:#d97a0b; --signal-ink:#7a4100; --go:#2f7a4f; --stop:#b23a2e; --rail:#3a4540;
+  --display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1d2421; --ink:#e7ece8; --muted:#97a39c; --line:#2f3934;
+  --signal:#f29a2e; --signal-ink:#ffcf94; --go:#5cc184; --stop:#ef6a5c; --rail:#8d9a93; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1d2421; --ink:#e7ece8; --muted:#97a39c; --line:#2f3934;
+  --signal:#f29a2e; --signal-ink:#ffcf94; --go:#5cc184; --stop:#ef6a5c; --rail:#8d9a93; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.1;margin:0;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:.9rem;margin:4px 0 0}
+.tabs{display:flex;gap:6px}
+.tab,.chip,.btn{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 14px;font-size:.9rem}
+.tab[aria-pressed="true"],.chip[aria-pressed="true"]{background:var(--rail);color:var(--bg);border-color:var(--rail)}
+.btn{border-radius:10px;padding:10px 18px;font-weight:700}
+.btn.primary{background:var(--signal);border-color:var(--signal);color:#1d1300}
+.btn:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.controls{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.controls .grp{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:.75rem;color:var(--muted);letter-spacing:.06em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;
+  background:repeating-linear-gradient(90deg,var(--rail) 0 10px,transparent 10px 18px)}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
+.tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid currentColor}
+.tag.t-attack{color:var(--stop)} .tag.t-choice{color:var(--signal-ink)} .tag.t-daily{color:var(--go)} .tag.t-serious{color:var(--muted)}
+.line{font-size:1.35rem;font-weight:700;line-height:1.45;text-wrap:balance;margin:0}
+.line::before{content:"“";color:var(--signal)} .line::after{content:"”";color:var(--signal)}
+.goal{font-size:.9rem}
+.goal b{color:var(--signal-ink)}
+.timerbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.timerbar span{display:block;height:100%;background:var(--signal);width:100%;transition:width .1s linear}
+.timerbar.late span{background:var(--stop)}
+.tnum{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.9rem;color:var(--muted)}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.between{justify-content:space-between}
+.steps{display:flex;flex-direction:column;gap:12px}
+.step{border-left:3px solid var(--rail);padding:2px 0 2px 14px}
+.step h3{margin:0 0 4px;font-size:.8rem;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.step p{margin:0}
+.yours{background:var(--bg);border-radius:10px;padding:10px 12px;white-space:pre-wrap}
+.ex{display:flex;flex-direction:column;gap:8px;margin:6px 0 0;padding:0;list-style:none}
+.ex li{display:flex;gap:10px;align-items:baseline}
+.ex .m{flex:none;font-size:.72rem;font-weight:700;color:var(--signal-ink);border:1px solid var(--signal);border-radius:5px;padding:1px 6px}
+.trap{color:var(--stop);font-weight:700}
+.step.ai{border-left-color:var(--signal)}
+.verdict{display:inline-block;font-weight:700;padding:2px 10px;border-radius:6px;background:var(--signal);color:#1d1300;margin-bottom:6px}
+.verdict.bad{background:var(--stop);color:#fff}
+.verdict.good{background:var(--go);color:#fff}
+.ai-sc{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85rem;margin:4px 0}
+.ai-fix{margin:6px 0 0}
+.thinking{color:var(--muted)}
+.rate{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
+.rate .opts{display:flex;gap:6px}
+.rate .opts button{min-width:40px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.stat b{display:block;font-family:var(--mono);font-size:1.3rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.75rem;color:var(--muted)}
+.advice{font-size:.92rem;color:var(--muted);margin:0}
+.six{display:grid;grid-template-columns:72px 1fr;gap:8px 10px;align-items:center}
+.six label{font-weight:700;font-size:.9rem}
+details{font-size:.92rem} summary{cursor:pointer;color:var(--muted)}
+.rules{margin:8px 0 0;padding-left:18px}
+@media (max-width:480px){h1{font-size:1.6rem}.line{font-size:1.15rem}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){.timerbar span{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>위트 레일 훈련소</h1>
+      <p class="sub">전제를 부정하지 말고, 그 안으로 들어가서 틀어라.</p>
+    </div>
+    <div class="tabs" role="group" aria-label="모드">
+      <button class="tab" id="tab-spar" aria-pressed="true">스파링</button>
+      <button class="tab" id="tab-six" aria-pressed="false">육하원칙 6연발</button>
+    </div>
+  </header>
+
+  <details>
+    <summary>훈련 규칙 3단계</summary>
+    <ol class="rules">
+      <li><b>레일 확인</b> — 상대 말·상황·캐릭터에 깔린 전제를 먼저 잡는다.</li>
+      <li><b>레일 틀기</b> — "이 말이 100% 사실이라면?" 빈칸 채우기(육하원칙) 또는 의미 바꾸기(문자 그대로).</li>
+      <li><b>목적지 확인</b> — 이 대화를 왜 하는지. 위로가 필요한 자리면 드립은 접는다.</li>
+    </ol>
+  </details>
+
+  <section id="spar" class="wrap" style="max-width:none">
+    <div class="controls">
+      <div class="grp"><span class="lbl">유형</span>
+        <button class="chip" data-type="all" aria-pressed="true">전체</button>
+        <button class="chip" data-type="daily" aria-pressed="false">일상</button>
+        <button class="chip" data-type="attack" aria-pressed="false">공격</button>
+        <button class="chip" data-type="choice" aria-pressed="false">양자택일</button>
+      </div>
+      <div class="grp"><span class="lbl">제한시간</span>
+        <button class="chip" data-time="5" aria-pressed="false">5초</button>
+        <button class="chip" data-time="10" aria-pressed="true">10초</button>
+        <button class="chip" data-time="20" aria-pressed="false">20초</button>
+        <button class="chip" data-time="0" aria-pressed="false">없음</button>
+      </div>
+    </div>
+
+    <article class="card" id="card">
+      <div class="meta"><span class="tag" id="c-tag"></span><span id="c-ctx"></span></div>
+      <p class="line" id="c-line"></p>
+      <p class="goal" id="c-goal"></p>
+
+      <div id="phase-ready" class="row">
+        <button class="btn primary" id="go">시작 — 타이머 켜기</button>
+        <button class="btn" id="skip">다른 문제</button>
+        <button class="btn" id="ai-new" hidden>AI가 새 문제 내기</button>
+        <span class="tnum" id="ai-new-msg"></span>
+      </div>
+
+      <div id="phase-answer" hidden>
+        <div class="row between"><span class="lbl">입으로 먼저 말하고, 적어라</span><span class="tnum" id="tnum"></span></div>
+        <div class="timerbar" id="tbar"><span></span></div>
+        <textarea id="ans" rows="2" placeholder="내 답"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn primary" id="submit">제출</button><span class="tnum" id="late"></span></div>
+      </div>
+
+      <div id="phase-review" class="steps" hidden>
+        <div class="step"><h3>내 답</h3><p class="yours" id="r-yours"></p></div>
+        <div class="step ai" id="ai-box" hidden><h3>AI 교관 평가</h3><div id="ai-out"></div></div>
+        <div class="step"><h3>1 · 깔린 레일</h3><p id="r-premise"></p></div>
+        <div class="step"><h3>2 · 틀 수 있는 지점</h3><p id="r-blank"></p><p id="r-mean" style="margin-top:4px"></p></div>
+        <div class="step"><h3>3 · 목적지</h3><p id="r-goalnote"></p></div>
+        <div class="step"><h3>예시 답</h3><ul class="ex" id="r-ex"></ul></div>
+        <div class="step" id="rate-step"><h3>점수 (0–3)</h3>
+          <div class="rate" id="rate"></div>
+        </div>
+        <div class="row"><button class="btn primary" id="next" disabled>저장하고 다음</button><button class="btn" id="next-noscore">바로 다음 문제</button></div>
+      </div>
+    </article>
+
+    <div class="card batch" id="batch">
+      <div class="row between">
+        <p style="margin:0"><b>모아서 채점</b> · 쌓인 답 <b class="tnum" id="b-n">0</b>개</p>
+        <span class="tnum" id="b-msg"></span>
+      </div>
+      <p class="advice">문제를 연달아 풀고, 5~10개 모이면 버튼 한 번으로 ChatGPT(무료 가능)에 통째로 채점받아.</p>
+      <div class="row">
+        <button class="btn primary" id="b-copy" disabled>전부 복사</button>
+        <a class="btn" id="b-open" href="https://chatgpt.com/" target="_blank" rel="noopener" style="text-decoration:none">ChatGPT 열기</a>
+        <button class="btn" id="b-clear">비우기</button>
+      </div>
+      <textarea id="b-text" rows="6" readonly hidden></textarea>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <p class="advice" id="advice"></p>
+  </section>
+
+  <section id="six" class="wrap" style="max-width:none" hidden>
+    <article class="card">
+      <div class="meta"><span class="tag t-attack">빈칸 채우기 드릴</span><span>60초 안에 6칸 다 채우기. 전제 부정 금지.</span></div>
+      <p class="line" id="s-line"></p>
+      <div class="row between"><button class="btn primary" id="s-go">60초 시작</button><span class="tnum" id="s-t"></span></div>
+      <div class="six" id="s-grid"></div>
+      <div class="row"><button class="btn" id="s-next">다른 대사</button></div>
+      <p class="advice">6개 중 1개만 건져도 정상이다. 목표는 "부정하지 않기"를 몸에 박는 것.</p>
+    </article>
+  </section>
+</div>
+
+<script>
+const CARDS=[
+{t:"daily",ctx:"친구 단톡방, 2주 만에 연락",line:"너 요즘 왜 이렇게 연락이 없냐? 죽은 줄 알았다",goal:"웃기기",
+ premise:"연락이 없으면 죽은 것이다.",blank:"언제/어떻게 — 죽었다면 언제 죽었고 어떻게 다시 나타났나?",mean:"'죽은 줄' 을 진짜 사망 처리로 받는다.",
+ ex:[["빈칸","응 죽었었는데 너 보고 싶어서 잠깐 살아났어. 10분 남음"],["의미","부고 문자 돌렸는데 너만 못 받았나 보네"]],note:"가벼운 자리. 마음껏 밀어붙여도 된다."},
+{t:"attack",ctx:"술자리, 좋아하는 사람이 옆에 있음",line:"너 키 몇이야? 깔창 깐 거 아니야?",goal:"여유 보여주기",
+ premise:"나는 깔창을 깔았다.",blank:"얼마나/어떻게 — 깔았다면 몇 개를 어떻게?",mean:"깔창을 장비·투자 아이템으로 받는다.",
+ ex:[["빈칸","맞아. 3단이라 다 빼면 앉은키야"],["빈칸","깔았지. 근데 아직 너보다 작아서 하나 더 주문함"]],note:"부정하면 진짜 깐 사람처럼 보인다. 인정하고 과장하는 쪽이 여유다."},
+{t:"daily",ctx:"집, 형(누나)이 지나가다",line:"넌 공부 안 하고 맨날 폰만 보냐",goal:"가볍게 넘기기",
+ premise:"나는 공부 대신 폰만 본다.",blank:"무엇을 — 폰으로 뭘 보고 있는데?",mean:"'본다' 를 서로 쳐다보는 관계로 받는다.",
+ ex:[["빈칸","폰으로 공부 중이야. 오늘 과목은 릴스학"],["의미","폰도 날 보고 있어서 서로 감시 중이야"]],note:"가족 사이 잔소리. 날 세우면 싸움, 웃기면 끝."},
+{t:"choice",ctx:"친구가 갑자기",line:"공부할래, 돈 벌래? 둘 중 하나만 골라",goal:"주도권 가져오기",
+ premise:"둘 중 하나는 반드시 골라야 한다.",blank:"어떻게 — 고르는 규칙·조건이 비어 있다.",mean:"'골라' 를 메뉴판·게임처럼 받는다.",
+ ex:[["빈칸","하나 고르면 나머지는 누가 가져가는데?"],["빈칸","둘 다 고르면 추가금 얼마야?"]],note:"양자택일 함정은 '조건이 뭔데?' 로 질문을 되돌려주면 주도권이 넘어온다."},
+{t:"choice",ctx:"연인이 장난 반 진심 반",line:"나랑 엄마가 물에 빠지면 누구부터 구할 거야?",goal:"관계 지키기",
+ premise:"둘이 동시에 물에 빠졌다.",blank:"어디서/왜 — 둘이 왜 같이 물에 있는데?",mean:"",
+ ex:[["빈칸","일단 둘이 왜 같이 물에 있는지부터 물어봐야겠는데. 언제 그렇게 친해졌어?"],["빈칸","너 구하러 들어갔다가 어머님한테 구조당할 듯"]],note:"누구를 골라도 진다. 상황 자체의 빈칸으로 빠지면서 둘 다 살린다."},
+{t:"serious",ctx:"친구가 풀 죽은 목소리로",line:"나 이번에 시험 또 떨어졌어",goal:"위로",
+ premise:"친구가 실패해서 속상하다.",blank:"",mean:"",
+ ex:[["공감","…몇 점 차이였어? 일단 밥 먹자, 내가 살게"]],note:"함정 문제. 지금은 드립이 아니라 들어주는 자리다. 웃음은 상대가 먼저 풀린 다음에.",trap:true},
+{t:"attack",ctx:"모임, 은근히 깎아내리는 사람",line:"넌 그 나이 먹고 아직 해놓은 게 없냐?",goal:"여유 보여주기",
+ premise:"나는 해놓은 게 없다.",blank:"무엇을/어떻게 — 해놓은 게 없으면 뭐가 가능해지나?",mean:"",
+ ex:[["빈칸","응, 아무것도 안 해놔서 뭘 해도 처음이라 다 재밌어"],["빈칸","해놓은 게 없어서 잃을 것도 없음. 지금 무적 상태야"]],note:"증명하려 들면 진다. 전제 안으로 들어가야 여유가 보인다."},
+{t:"daily",ctx:"친구랑 통화 30분째",line:"너 진짜 말 많다",goal:"웃기기",
+ premise:"나는 말이 많다.",blank:"얼마나 — 많으면 얼마나 많은데?",mean:"말을 데이터·요금처럼 받는다.",
+ ex:[["빈칸","오늘 할당량 아직 반도 못 썼어"],["의미","그래서 요금제 무제한 쓰잖아"]],note:""},
+{t:"daily",ctx:"약속 장소, 20분 늦음",line:"너 몇 시인 줄 알아?",goal:"사과 + 분위기 풀기",
+ premise:"나는 지금 몇 시인지 모른다.",blank:"",mean:"'몇 시인 줄 알아?' 를 진짜 시간 질문으로 받는다.",
+ ex:[["의미","몰라서 늦은 거지. 알았으면 일찍 왔지. 미안 오늘 내가 쏨"],["의미","몰라, 그래서 너한테 물어보려고 왔어"]],note:"늦은 건 내 잘못. 드립 뒤에 사과를 꼭 붙여야 목적지에 도착한다."},
+{t:"daily",ctx:"처음 만난 자리",line:"MBTI 뭐예요?",goal:"친해지기",
+ premise:"MBTI로 나를 파악할 수 있다.",blank:"누가 — 누가 정하는데?",mean:"",
+ ex:[["빈칸","맞혀보세요. 틀리면 그걸로 바꿀게요"],["빈칸","오늘은 E인데 내일 출근하면 I로 바뀌어요"]],note:""},
+{t:"attack",ctx:"오랜만에 만난 친척",line:"너 살쪘다?",goal:"가볍게 넘기기",
+ premise:"나는 살이 쪘다.",blank:"왜/무엇이 — 뭐가 붙었길래?",mean:"",
+ ex:[["빈칸","응, 존재감 키우는 중이야"],["빈칸","살 아니고 행복이 붙은 거예요"]],note:""},
+{t:"attack",ctx:"면접장",line:"본인의 단점은 뭔가요?",goal:"면접 통과 (온도 낮게)",
+ premise:"나에게는 말할 만한 단점이 있다.",blank:"어떻게 — 단점이 어떤 식으로 드러나나?",mean:"",
+ ex:[["빈칸","하나에 꽂히면 시간 가는 줄 몰라서, 알람을 세 개씩 맞춰둡니다"]],note:"면접은 웃기는 자리가 아니다. 위트는 양념 한 숟갈만, 내용은 진지하게."},
+{t:"daily",ctx:"친구가 슬쩍",line:"너 여자친구 없지?",goal:"웃기기",
+ premise:"나는 여자친구가 없다.",blank:"왜 — 없는 이유는?",mean:"",
+ ex:[["빈칸","응, 있었으면 지금 너랑 여기 없지"],["빈칸","없어. 경쟁률이 너무 높아서 아직 서류 심사 중"]],note:""},
+{t:"daily",ctx:"아침 카톡",line:"밥 먹었어?",goal:"대화 이어가기",
+ premise:"밥을 먹었거나 안 먹었다.",blank:"누가 — 누가 누구를 먹었나?",mean:"",
+ ex:[["빈칸","응, 근데 밥이 날 먹은 것 같아. 졸려 죽겠음"],["빈칸","아직. 밥이 나를 안 받아줌"]],note:""},
+{t:"attack",ctx:"친구가 옷을 보고",line:"그 옷 어디서 샀냐? 할머니 옷장?",goal:"웃기기",
+ premise:"이 옷은 할머니 옷장에서 나왔다.",blank:"누가/무엇을 — 할머니가 뭘 더 남겼나?",mean:"",
+ ex:[["빈칸","응, 할머니가 너 줄 것도 하나 남겨두셨대"],["빈칸","빈티지라 비싸. 할머니한테 계산했어"]],note:""},
+{t:"serious",ctx:"친구가 밤늦게",line:"요즘 진짜 사는 게 재미없다",goal:"들어주기",
+ premise:"친구가 많이 지쳐 있다.",blank:"",mean:"",
+ ex:[["공감","무슨 일 있었어? 지금 통화 돼?"]],note:"함정 문제. 여기서 드립은 '내 말 안 듣는구나' 로 들린다.",trap:true},
+{t:"attack",ctx:"회사, 실수 후 상사가",line:"넌 일을 시키면 왜 한 번에 못 하냐?",goal:"수습 (온도 낮게)",
+ premise:"나는 한 번에 못 한다.",blank:"몇 번 — 그럼 몇 번이면 하는데?",mean:"",
+ ex:[["빈칸","두 번째에 완벽하게 하려고 연습한 겁니다. 죄송합니다, 지금 바로 고치겠습니다"]],note:"상사 앞 위트는 잘못 인정이 먼저, 드립은 짧게. 순서 바꾸면 반항으로 들린다."},
+{t:"choice",ctx:"친구들끼리 장난",line:"치킨이야 피자야? 3초 안에 골라",goal:"웃기기",
+ premise:"3초 안에 하나만 골라야 한다.",blank:"누가 내는데? — 비용이 비어 있다.",mean:"",
+ ex:[["빈칸","누가 사는지 먼저 말해. 그거 보고 고를게"],["빈칸","3초는 너무 짧고, 2마리는 시킬 수 있지?"]],note:""}
+];
+const SIX=["너 연애 못 하는 거 문제 있는 거야","넌 왜 이렇게 진지해","너 운동 안 하잖아","너 요즘 폰 너무 많이 본다","넌 왜 맨날 늦어","너 말투가 좀 아저씨 같아"];
+const TAGN={daily:"일상",attack:"공격",choice:"양자택일",serious:"진지"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let type="all",limit=10,cur=null,timer=null,start=0,lastIdx=-1,scores={p:null,s:null,g:null};
+let hist=[];try{hist=JSON.parse(localStorage.getItem("wit-hist")||"[]")}catch(e){hist=[]}
+function save(){try{localStorage.setItem("wit-hist",JSON.stringify(hist.slice(-200)))}catch(e){}}
+
+function pick(){
+  const pool=CARDS.map((c,i)=>i).filter(i=>type==="all"||CARDS[i].t===type||(type!=="all"&&CARDS[i].t==="serious"&&Math.random()<.15));
+  let i;do{i=pool[Math.floor(Math.random()*pool.length)]}while(pool.length>1&&i===lastIdx);
+  lastIdx=i;show(CARDS[i]);
+}
+function show(c){
+  cur=c;
+  $("c-tag").textContent=TAGN[cur.t];$("c-tag").className="tag t-"+cur.t;
+  $("c-ctx").textContent=cur.ctx;$("c-line").textContent=cur.line;
+  $("c-goal").innerHTML="대화 목적: <b>"+esc(cur.goal)+"</b>";
+  $("phase-ready").hidden=false;$("phase-answer").hidden=true;$("phase-review").hidden=true;$("ans").value="";
+}
+function go(){
+  $("phase-ready").hidden=true;$("phase-answer").hidden=false;$("ans").focus();$("late").textContent="";
+  start=performance.now();clearInterval(timer);
+  const bar=$("tbar"),sp=bar.querySelector("span");bar.classList.remove("late");
+  if(!limit){bar.hidden=true;$("tnum").textContent="";return}
+  bar.hidden=false;
+  timer=setInterval(()=>{const el=(performance.now()-start)/1000,left=Math.max(0,limit-el);
+    sp.style.width=(left/limit*100)+"%";$("tnum").textContent=left.toFixed(1)+"초";
+    if(left<=0){bar.classList.add("late");$("tnum").textContent="시간 초과";$("late").textContent="실전이었으면 이미 대화 넘어감";clearInterval(timer)}},100);
+}
+function submit(){
+  clearInterval(timer);const el=(performance.now()-start)/1000;
+  $("phase-answer").hidden=true;$("phase-review").hidden=false;
+  $("r-yours").textContent=($("ans").value.trim()||"(답 없음)")+"\n— "+el.toFixed(1)+"초";
+  $("r-premise").textContent=cur.premise;
+  $("r-blank").textContent=cur.blank?"빈칸 채우기: "+cur.blank:"";
+  $("r-mean").textContent=cur.mean?"의미 바꾸기: "+cur.mean:"";
+  if(!cur.blank&&!cur.mean)$("r-blank").textContent="틀지 않는 게 정답인 문제.";
+  $("r-goalnote").innerHTML=(cur.trap?'<span class="trap">함정 문제 · </span>':"")+esc(cur.note||"목적: "+cur.goal);
+  $("r-ex").innerHTML=cur.ex.map(e=>'<li><span class="m">'+esc(e[0])+'</span><span>'+esc(e[1])+'</span></li>').join("");
+  scores={p:null,s:null,g:null,time:el};buildRate();
+  aiEval(cur,$("ans").value.trim(),el);
+  const a=$("ans").value.trim();
+  if(a){sess.push({ctx:cur.ctx,line:cur.line,goal:cur.goal,ans:a,time:+el.toFixed(1)});saveSess();renderBatch()}
+}
+
+/* ---------- 모아서 채점 ---------- */
+let sess=[];try{sess=JSON.parse(localStorage.getItem("wit-sess")||"[]")}catch(e){sess=[]}
+function saveSess(){try{localStorage.setItem("wit-sess",JSON.stringify(sess.slice(-30)))}catch(e){}}
+function batchText(){
+  const items=sess.map((s,i)=>`${i+1}. 상황: ${s.ctx} / 목적: ${s.goal}
+상대: "${s.line}"
+내 답: "${s.ans}" (${s.time}초)`).join("\n\n");
+  return `너는 위트 교관이다. 아래 내 답 ${sess.length}개를 냉정하게 채점해라. 칭찬으로 시작하지 말고 반말로 짧고 직설적으로.
+
+기준: 위트 = 상대 전제를 부정하지 않고 "이 말이 100% 사실이라면?"으로 밀어붙여 뜻밖의 방향으로 트는 것. 방법은 빈칸 채우기(육하원칙 중 생략된 부분)나 의미 바꾸기(문자 그대로 받기). 대화 목적에 안 맞으면 실패.
+
+${items}
+
+[형식] 각 번호마다 딱 3줄:
+판정(위트/공감 반복/무리수/말장난/분위기 파괴/전제 부정/좋은 공감) · 점수(전제/의외성/목적 각 0~3)
+고칠 점 한 줄
+고친 버전 한 줄
+마지막에: 총평 2줄(가장 약한 축, 반복되는 실수) + 다음에 연습할 문제 3개를 같은 형식으로 내줘.`;
+}
+function renderBatch(){$("b-n").textContent=sess.length;$("b-copy").disabled=!sess.length;$("b-text").hidden=true;
+  const q=sess.length?"https://chatgpt.com/?q="+encodeURIComponent(batchText()):"";
+  $("b-open").href=q&&q.length<7000?q:"https://chatgpt.com/";
+  $("b-open").textContent=q&&q.length<7000?"ChatGPT로 바로 보내기":"ChatGPT 열기";}
+$("b-copy").onclick=()=>{
+  const t=batchText(),msg=$("b-msg");
+  const fallback=()=>{const ta=$("b-text");ta.value=t;ta.hidden=false;ta.focus();ta.select();msg.textContent="길게 눌러 전체 복사";};
+  try{navigator.clipboard.writeText(t).then(()=>{msg.textContent="복사됨 → ChatGPT에 붙여넣기"},fallback)}catch(e){fallback()}
+};
+$("b-clear").onclick=()=>{sess=[];saveSess();renderBatch();$("b-msg").textContent="비웠어";};
+
+/* ---------- AI 교관 ---------- */
+let sample=null;
+/* 사이트 버전: 내 서버(/api/eval)가 Gemini로 채점 */
+async function api(body){
+  const r=await fetch("/api/eval",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.status===429)throw{code:"rate_limited"};
+  if(!r.ok)throw{code:"upstream_error"};
+  return r.json();
+}
+sample={json:()=>{throw{code:"invalid_request"}}};
+$("ai-new").hidden=false;
+const RULES=`너는 "위트 레일 훈련소"의 교관이다. 위트 = 상대가 깐 전제를 부정하지 않고 받아들인 채, "이 말이 100% 사실이라면?"으로 밀어붙여 뜻밖의 방향으로 트는 것.
+틀기 방법: 빈칸 채우기(육하원칙 중 생략된 부분 상상), 의미 바꾸기(의도 말고 문자 그대로 받기).
+목적지: 대화 목적(웃기기/위로/관계 지키기/여유 보여주기)에 맞아야 한다. 위로가 필요한 자리에서 드립은 실패다.
+실패 유형: 공감 반복(전제만 따라감), 무리수(전제 무시), 말장난(단어만 따옴), 분위기 파괴(목적 무시), 전제 부정(반박·변명).`;
+function errMsg(e){const c=e&&e.code;
+  if(c==="not_granted"||c==="sampling_disabled"||c==="not_declared"||c==="capability_disabled"||c==="capability_removed")return "AI 평가를 쓸 수 없어. 아래에서 스스로 채점해.";
+  if(c==="rate_limited")return "사람이 몰려서 잠깐 막혔어. 1분 뒤에 다시 해봐. 이번 문제는 스스로 채점.";
+  if(c==="session_expired")return "Claude 로그인이 풀렸어. 다시 로그인하면 AI 평가가 돌아와.";
+  return "AI 평가가 실패했어. 이번 문제는 스스로 채점해.";}
+async function aiEval(card,answer,time){
+  const box=$("ai-box"),out=$("ai-out");
+  if(!sample){box.hidden=true;return}
+  box.hidden=false;
+  if(!answer){out.innerHTML='<p class="thinking">답이 없어서 평가할 게 없음. 예시 답 보고 다음 문제로.</p>';return}
+  out.innerHTML='<p class="thinking">교관이 채점 중…</p>';
+  const prompt=RULES+`
+
+[문제]
+상황: ${card.ctx}
+상대 대사: "${card.line}"
+대화 목적: ${card.goal}
+${card.trap?"(이 문제는 위트보다 공감이 정답인 함정 문제다.)":""}
+
+[학생 답] (반응 시간 ${time.toFixed(1)}초)
+"${answer}"
+
+이 답을 냉정하게 평가해라. 칭찬으로 시작하지 말고, 별로면 별로라고 해라. 한국어 반말로, 짧고 직설적으로.
+JSON 하나만 답해라:
+{"verdict":"위트|공감 반복|무리수|말장난|분위기 파괴|전제 부정|좋은 공감","premise":"이 대사에 깔린 전제 한 줄","caught":true 또는 false(학생이 전제를 받아들였는지),"scores":{"p":0~3,"s":0~3,"g":0~3},"why":"판정 이유 한 문장","fix":"고칠 점 딱 1개, 한 문장","better":"학생 답을 살려서 고친 버전 한 줄(함정 문제면 공감 답)"}
+점수 p=전제 활용, s=의외성, g=목적 적합.`;
+  try{
+    const r=await api({kind:"eval",card:{ctx:card.ctx,line:card.line,goal:card.goal,trap:!!card.trap},answer,time});
+    const sc=r&&r.scores||{};const clamp=v=>Math.max(0,Math.min(3,Math.round(+v||0)));
+    const p=clamp(sc.p),s=clamp(sc.s),g=clamp(sc.g);
+    const v=String(r.verdict||"");
+    const cls=(v==="위트"||v==="좋은 공감")?"good":(v==="공감 반복"?"":"bad");
+    out.innerHTML="";
+    const vd=document.createElement("span");vd.className="verdict "+cls;vd.textContent=v||"판정";out.append(vd);
+    const scl=document.createElement("p");scl.className="ai-sc";scl.textContent=`전제 활용 ${p}/3 · 의외성 ${s}/3 · 목적 적합 ${g}/3 · 합계 ${p+s+g}/9`;out.append(scl);
+    const add=(label,txt)=>{if(!txt)return;const el=document.createElement("p");el.className="ai-fix";const b=document.createElement("b");b.textContent=label+" ";el.append(b,document.createTextNode(String(txt)));out.append(el)};
+    add("이유",r.why);add("고칠 점",r.fix);add("고친 버전",r.better);
+    setRate({p,s,g});
+  }catch(e){out.innerHTML="";const el=document.createElement("p");el.className="thinking";el.textContent=errMsg(e);out.append(el)}
+}
+function setRate(v){Object.assign(scores,v);
+  $("rate").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",scores[b.dataset.k]===+b.dataset.v));
+  $("next").disabled=false;}
+
+$("ai-new").onclick=async()=>{
+  const btn=$("ai-new"),msg=$("ai-new-msg");btn.disabled=true;msg.textContent="문제 만드는 중…";
+  const want=type==="all"?"일상/공격/양자택일 중 아무거나(가끔 위로가 필요한 진지한 함정 문제)":{daily:"일상",attack:"나를 깎아내리는 공격",choice:"곤란한 양자택일 질문"}[type];
+  const prompt=RULES+`
+
+위트 연습용 상황 카드를 1개 새로 만들어라. 유형: ${want}.
+한국 20대가 실제로 들을 법한 자연스러운 구어체 대사로. 친구, 가족, 연애, 알바·회사, 처음 만난 자리 등 다양하게.
+JSON 하나만 답해라:
+{"t":"daily|attack|choice|serious","ctx":"상황 한 줄","line":"상대 대사","goal":"웃기기|위로|관계 지키기|여유 보여주기 등","premise":"깔린 전제 한 줄","blank":"빈칸 채우기 힌트(육하원칙 중 어디가 비었는지), 없으면 빈 문자열","mean":"의미 바꾸기 힌트, 없으면 빈 문자열","ex":[["빈칸","예시 답"],["의미","예시 답"]],"note":"목적지 관련 코멘트 한 줄","trap":true 또는 false}
+serious 유형이면 trap은 true, ex는 [["공감","공감 답"]] 하나.`;
+  try{
+    const c=await api({kind:"new",type});
+    if(!c||!c.line)throw{code:"invalid_json"};
+    c.t=TAGN[c.t]?c.t:"daily";c.ex=Array.isArray(c.ex)?c.ex.filter(x=>Array.isArray(x)&&x.length>=2).map(x=>[String(x[0]),String(x[1])]):[];
+    ["ctx","line","goal","premise","blank","mean","note"].forEach(k=>c[k]=String(c[k]||""));c.trap=!!c.trap;
+    show(c);msg.textContent="";
+  }catch(e){msg.textContent=e&&e.code==="invalid_json"?"문제 생성 실패. 다시 눌러봐.":errMsg(e).split(".")[0]}
+  finally{btn.disabled=false}
+};
+function buildRate(){
+  const axes=[["p","전제 활용"],["s","의외성"],["g","목적 적합"]];
+  $("rate").innerHTML=axes.map(([k,n])=>'<span>'+n+'</span><div class="opts">'+[0,1,2,3].map(v=>'<button class="chip" data-k="'+k+'" data-v="'+v+'" aria-pressed="false">'+v+'</button>').join("")+'</div>').join("");
+  $("next").disabled=true;
+}
+$("rate").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  scores[b.dataset.k]=+b.dataset.v;
+  $("rate").querySelectorAll('[data-k="'+b.dataset.k+'"]').forEach(x=>x.setAttribute("aria-pressed",x===b));
+  $("next").disabled=[scores.p,scores.s,scores.g].some(v=>v===null);});
+$("next").onclick=()=>{hist.push({p:scores.p,s:scores.s,g:scores.g,time:scores.time,t:cur.t});save();renderStats();pick();go()};
+$("next-noscore").onclick=()=>{pick();go()};
+$("go").onclick=go;$("skip").onclick=pick;$("submit").onclick=submit;
+$("ans").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit()}});
+
+function renderStats(){
+  const n=hist.length,avg=k=>n?(hist.reduce((a,h)=>a+h[k],0)/n):0;
+  const t=n?hist.reduce((a,h)=>a+h.time,0)/n:0;
+  $("stats").innerHTML=[["푼 문제",n],["전제 활용",n?avg("p").toFixed(1):"–"],["의외성",n?avg("s").toFixed(1):"–"],["평균 반응",n?t.toFixed(1)+"초":"–"]]
+    .map(([a,b])=>'<div class="stat"><b>'+b+'</b><span>'+a+'</span></div>').join("");
+  if(n<5){$("advice").textContent="5문제 이상 채점하면 약점을 짚어준다.";return}
+  const r=[["p",avg("p")],["s",avg("s")],["g",avg("g")]].sort((a,b)=>a[1]-b[1])[0][0];
+  $("advice").textContent={p:"약점: 전제 활용. 답부터 찾지 말고 '이 말이 사실이라면?'을 먼저 속으로 말해라.",
+    s:"약점: 의외성. 공감 반복에 머물러 있다. 육하원칙 6연발로 빈칸 찾는 근육부터 키워라.",
+    g:"약점: 목적 적합. 드립은 되는데 자리를 못 읽는다. 답하기 전에 '이 대화 왜 하지?'부터."}[r]
+    +(t>limit&&limit?" 반응도 제한시간보다 느리다.":"");
+}
+
+document.querySelectorAll("[data-type]").forEach(b=>b.onclick=()=>{type=b.dataset.type;
+  document.querySelectorAll("[data-type]").forEach(x=>x.setAttribute("aria-pressed",x===b));pick()});
+document.querySelectorAll("[data-time]").forEach(b=>b.onclick=()=>{limit=+b.dataset.time;
+  document.querySelectorAll("[data-time]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+
+/* 육하원칙 */
+const W=["누가","언제","어디서","무엇을","어떻게","왜"];let sTimer=null,sIdx=-1;
+function sPick(){let i;do{i=Math.floor(Math.random()*SIX.length)}while(i===sIdx);sIdx=i;
+  $("s-line").textContent=SIX[i];clearInterval(sTimer);$("s-t").textContent="";
+  $("s-grid").innerHTML=W.map((w,k)=>'<label for="s'+k+'">'+w+'</label><input type="text" id="s'+k+'" placeholder="'+w+'라도 그렇다면…">').join("")}
+$("s-go").onclick=()=>{clearInterval(sTimer);const st=performance.now();$("s0").focus();
+  sTimer=setInterval(()=>{const l=Math.max(0,60-(performance.now()-st)/1000);$("s-t").textContent=l.toFixed(0)+"초";
+    if(l<=0){clearInterval(sTimer);const f=W.filter((w,k)=>$("s"+k).value.trim()).length;$("s-t").textContent="끝 · "+f+"/6칸"}},200)};
+$("s-next").onclick=sPick;
+function tab(which){$("spar").hidden=which!=="spar";$("six").hidden=which!=="six";
+  $("tab-spar").setAttribute("aria-pressed",which==="spar");$("tab-six").setAttribute("aria-pressed",which==="six")}
+$("tab-spar").onclick=()=>tab("spar");$("tab-six").onclick=()=>tab("six");
+
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||e.target.matches("textarea,input,button,a"))return;
+  if(!$("phase-ready").hidden&&!$("spar").hidden){e.preventDefault();go()}
+  else if(!$("phase-review").hidden&&!$("spar").hidden){e.preventDefault();($("next").hidden||$("next").disabled?$("next-noscore"):$("next")).click()}
+});
+pick();sPick();renderStats();renderBatch();
+</script>
